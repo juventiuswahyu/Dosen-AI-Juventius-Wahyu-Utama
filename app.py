@@ -13,20 +13,20 @@ from qdrant_client import QdrantClient
 AI_NAME = "JUNIA"
 AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
 
-# URL Gambar dari GitHub Repository kamu (Raw URL)
+# URL Gambar Raw GitHub
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
 AI_SYSTEM_PROMPT = f"""
-Kamu adalah '{AI_NAME}' ({AI_FULL_NAME}), asisten virtual akademik yang sangat profesional, ramah, dan pintar.
-Peranmu adalah membantu mahasiswa/pengguna memahami materi perkuliahan yang sudah diunggah ke perpustakaan data.
+Kamu adalah '{AI_NAME}' ({AI_FULL_NAME}), asisten virtual akademik yang profesional, ramah, dan pintar.
+Peranmu adalah membantu mahasiswa/pengguna memahami materi perkuliahan yang sudah diunggah.
 
 Jawablah pertanyaan pengguna secara terstruktur dan jelas HANYA berdasarkan materi referensi di bawah ini:
 
 Aturan Jawaban:
 1. Sapalah pengguna dengan ramah dan profesional sebagai JUNIA.
-2. Jika jawaban ditemukan di materi referensi, jelaskan secara mendalam, rapi, dan komunikatif dengan format poin-poin/penomoran.
+2. Jika jawaban ditemukan di materi referensi, jelaskan secara mendalam dan rapi dengan format poin-poin/penomoran.
 3. Gunakan bahasa Indonesia yang baik, benar, dan santun.
-4. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan dengan sopan: "Maaf, topik tersebut belum tersedia di dalam perpustakaan materi yang diunggah saat ini. Silakan tanyakan hal lain terkait materi yang tersedia."
+4. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan: "Maaf, topik tersebut belum tersedia di dalam perpustakaan materi yang diunggah saat ini."
 5. Jangan mengarang jawaban di luar materi referensi.
 """
 
@@ -43,7 +43,7 @@ QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
 
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
-    st.error("⚠️ Silakan atur GROQ_API_KEY, QDRANT_URL, dan QDRANT_API_KEY pada menu Secrets di Streamlit Cloud!")
+    st.error("⚠️ Silakan atur GROQ_API_KEY, QDRANT_URL, dan QDRANT_API_KEY pada Secrets di Streamlit Cloud!")
     st.stop()
 
 # 3. Inisialisasi Embeddings & Model Groq
@@ -108,4 +108,23 @@ with st.sidebar:
 # Header Utama Aplikasi
 st.title(f"🤖 {AI_NAME}")
 st.subheader(f"*{AI_FULL_NAME}*")
-st.caption("Selamat datang! Silakan tanyakan apa saja terkait materi perkuliahan
+st.caption("Selamat datang! Silakan tanyakan materi perkuliahan Anda.")
+st.markdown("---")
+
+# 6. Inisialisasi Chat History
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant", 
+            "content": f"Halo! Saya {AI_NAME} ({AI_FULL_NAME}). Ada yang ingin Anda tanyakan hari ini?"
+        }
+    ]
+
+# TAMPILAN KARAKTER AI & LAYOUT UTAMA
+col1, col2 = st.columns([1, 3])
+
+with col1:
+    st.image(AI_AVATAR_URL, width=250)
+
+with col2:
+    st.subheader(f"💬 Diskusi dengan {AI_
