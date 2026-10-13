@@ -7,75 +7,66 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
-# ------------------------------------------------------------------
-# KONFIGURASI KARAKTER ASISTEN AI (JUNIA)
-# ------------------------------------------------------------------
+# --------------------------------------------------
+# KONFIGURASI JUNIA
+# --------------------------------------------------
 AI_NAME = "JUNIA"
 AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
-
-# URL Gambar Raw GitHub
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
-AI_SYSTEM_PROMPT = """
-Kamu adalah 'JUNIA' (Juven's University & Intelligent Academic Assistant), asisten virtual akademik yang profesional, ramah, dan pintar.
-Peranmu adalah membantu mahasiswa/pengguna memahami materi perkuliahan yang sudah diunggah.
+SYS_PROMPT = (
+    "Kamu adalah JUNIA (Juven's University & Intelligent Academic Assistant). "
+    "Kamu asisten akademik yang ramah, sopan, dan profesional. "
+    "Jawab pertanyaan HANYA berdasarkan materi referensi berikut.\n\n"
+)
 
-Jawablah pertanyaan pengguna secara terstruktur dan jelas HANYA berdasarkan materi referensi di bawah ini:
-
-Aturan Jawaban:
-1. Sapalah pengguna dengan ramah dan profesional sebagai JUNIA.
-2. Jika jawaban ditemukan di materi referensi, jelaskan secara mendalam dan rapi dengan format poin-poin/penomoran.
-3. Gunakan bahasa Indonesia yang baik, benar, dan santun.
-4. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan: "Maaf, topik tersebut belum tersedia di dalam perpustakaan materi yang diunggah saat ini."
-5. Jangan mengarang jawaban di luar materi referensi.
-"""
-
-# 1. Konfigurasi Halaman
+# 1. Page Config
 st.set_page_config(
-    page_title="JUNIA - Academic Assistant", 
-    page_icon="🤖", 
+    page_title="JUNIA Academic Assistant",
+    page_icon="🤖",
     layout="wide"
 )
 
-# 2. Ambil Kunci API dari Streamlit Secrets
+# 2. Ambil Kunci API
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
 
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
-    st.error("⚠️ Silakan atur GROQ_API_KEY, QDRANT_URL, dan QDRANT_API_KEY pada Secrets di Streamlit Cloud!")
+    st.error("⚠️ Silakan atur Secrets pada Streamlit Cloud!")
     st.stop()
 
-# 3. Inisialisasi Embeddings & Model Groq
+# 3. Model & Database
 @st.cache_resource
 def load_embeddings():
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
 embeddings = load_embeddings()
 
 llm = ChatGroq(
-    model_name="openai/gpt-oss-120b", 
+    model_name="openai/gpt-oss-120b",
     groq_api_key=GROQ_API_KEY,
     temperature=0.2
 )
 
-# 4. Koneksi ke Qdrant
 client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 collection_name = "materi_library"
 
-# 5. Sidebar
+# 4. Sidebar
 with st.sidebar:
     st.image(AI_AVATAR_URL, use_container_width=True)
     st.title("Panel JUNIA")
-    st.caption("Juven's University & Intelligent Academic Assistant")
+    st.caption(AI_FULL_NAME)
     st.markdown("---")
     st.header("📤 Unggah Materi PDF")
     
-    uploaded_file = st.file_uploader("Pilih file PDF materi", type=["pdf"])
+    uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
     
     if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
-        with st.spinner("Sedang membaca dan memproses dokumen..."):
-            temp_filename = f"temp_{uploaded_file.name}"
+        with st.spinner("Memproses dokumen..."):
+            temp_filename = "temp_" + uploaded_file.name
             with open(temp_filename, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
@@ -83,7 +74,7 @@ with st.sidebar:
             docs = loader.load()
             
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000, 
+                chunk_size=1000,
                 chunk_overlap=150
             )
             splits = text_splitter.split_documents(docs)
@@ -99,39 +90,39 @@ with st.sidebar:
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
                 
-            st.success("✅ File berhasil ditambahkan!")
+            st.success("✅ Berhasil disimpan!")
 
     if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
-# Header Utama Aplikasi
-st.title("🤖 JUNIA")
-st.subheader("*Juven's University & Intelligent Academic Assistant*")
+# 5. Header Utama
+st.title("🤖 " + AI_NAME)
+st.subheader("*" + AI_FULL_NAME + "*")
 st.caption("Selamat datang! Silakan tanyakan materi perkuliahan Anda.")
 st.markdown("---")
 
-# 6. Inisialisasi Chat History
+# 6. Chat History Init
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
-            "role": "assistant", 
-            "content": "Halo! Saya JUNIA (Juven's University & Intelligent Academic Assistant). Ada yang ingin Anda tanyakan hari ini?"
+            "role": "assistant",
+            "content": "Halo! Saya " + AI_NAME + " (" + AI_FULL_NAME + "). Ada yang ingin Anda tanyakan hari ini?"
         }
     ]
 
-# TAMPILAN KARAKTER AI & LAYOUT UTAMA
+# 7. Layout Utama (Karakter & Chat)
 col1, col2 = st.columns([1, 3])
 
 with col1:
     st.image(AI_AVATAR_URL, width=250)
 
 with col2:
-    st.subheader("💬 Diskusi dengan JUNIA")
+    st.subheader("💬 Diskusi dengan " + AI_NAME)
     
     for message in st.session_state.messages:
         if message["role"] == "assistant":
-            st.markdown("**🤖 JUNIA:**")
+            st.markdown("**🤖 " + AI_NAME + ":**")
             st.info(message["content"])
         else:
             st.markdown("**👤 Anda:**")
@@ -140,11 +131,14 @@ with col2:
     with st.form(key="chat_form", clear_on_submit=True):
         prompt = st.text_input(
             label="Ketik pertanyaan Anda di sini:",
-            placeholder="Contoh: Apa yang dimaksud dengan positioning?"
+            placeholder="Contoh: Apa itu positioning?"
         )
-        submit_button = st.form_submit_button(label="Kirim Pertanyaan 🚀", type="primary")
+        submit_button = st.form_submit_button(
+            label="Kirim Pertanyaan 🚀",
+            type="primary"
+        )
 
-# 7. Proses Jawaban
+# 8. Tanyakan ke AI
 if submit_button and prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     
@@ -158,7 +152,16 @@ if submit_button and prompt:
     docs = vector_store.similarity_search(prompt, k=4)
     
     if not docs:
-        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah dokumen PDF terlebih dahulu melalui sidebar."
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah PDF lewat sidebar."
     else:
-        context = "\n\n---\n\n".join([doc.page_content for doc in docs])
-        full_prompt = f"{AI_SYSTEM_PRO
+        context_text = "\n\n---\n\n".join([d.page_content for d in docs])
+        full_prompt = (
+            SYS_PROMPT + 
+            "[REFERENSI]\n" + context_text + 
+            "\n\n[PERTANYAAN]\n" + prompt
+        )
+        res = llm.invoke(full_prompt)
+        response_text = res.content
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+    st.rerun()
