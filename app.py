@@ -16,8 +16,8 @@ AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
 # URL Gambar Raw GitHub
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
-AI_SYSTEM_PROMPT = f"""
-Kamu adalah '{AI_NAME}' ({AI_FULL_NAME}), asisten virtual akademik yang profesional, ramah, dan pintar.
+AI_SYSTEM_PROMPT = """
+Kamu adalah 'JUNIA' (Juven's University & Intelligent Academic Assistant), asisten virtual akademik yang profesional, ramah, dan pintar.
 Peranmu adalah membantu mahasiswa/pengguna memahami materi perkuliahan yang sudah diunggah.
 
 Jawablah pertanyaan pengguna secara terstruktur dan jelas HANYA berdasarkan materi referensi di bawah ini:
@@ -32,7 +32,7 @@ Aturan Jawaban:
 
 # 1. Konfigurasi Halaman
 st.set_page_config(
-    page_title=f"{AI_NAME} - {AI_FULL_NAME}", 
+    page_title="JUNIA - Academic Assistant", 
     page_icon="🤖", 
     layout="wide"
 )
@@ -66,8 +66,8 @@ collection_name = "materi_library"
 # 5. Sidebar
 with st.sidebar:
     st.image(AI_AVATAR_URL, use_container_width=True)
-    st.title(f"Panel {AI_NAME}")
-    st.caption(AI_FULL_NAME)
+    st.title("Panel JUNIA")
+    st.caption("Juven's University & Intelligent Academic Assistant")
     st.markdown("---")
     st.header("📤 Unggah Materi PDF")
     
@@ -99,15 +99,15 @@ with st.sidebar:
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
                 
-            st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
+            st.success("✅ File berhasil ditambahkan!")
 
     if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
 # Header Utama Aplikasi
-st.title(f"🤖 {AI_NAME}")
-st.subheader(f"*{AI_FULL_NAME}*")
+st.title("🤖 JUNIA")
+st.subheader("*Juven's University & Intelligent Academic Assistant*")
 st.caption("Selamat datang! Silakan tanyakan materi perkuliahan Anda.")
 st.markdown("---")
 
@@ -116,7 +116,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant", 
-            "content": f"Halo! Saya {AI_NAME} ({AI_FULL_NAME}). Ada yang ingin Anda tanyakan hari ini?"
+            "content": "Halo! Saya JUNIA (Juven's University & Intelligent Academic Assistant). Ada yang ingin Anda tanyakan hari ini?"
         }
     ]
 
@@ -127,4 +127,38 @@ with col1:
     st.image(AI_AVATAR_URL, width=250)
 
 with col2:
-    st.subheader(f"💬 Diskusi dengan {AI_
+    st.subheader("💬 Diskusi dengan JUNIA")
+    
+    for message in st.session_state.messages:
+        if message["role"] == "assistant":
+            st.markdown("**🤖 JUNIA:**")
+            st.info(message["content"])
+        else:
+            st.markdown("**👤 Anda:**")
+            st.success(message["content"])
+            
+    with st.form(key="chat_form", clear_on_submit=True):
+        prompt = st.text_input(
+            label="Ketik pertanyaan Anda di sini:",
+            placeholder="Contoh: Apa yang dimaksud dengan positioning?"
+        )
+        submit_button = st.form_submit_button(label="Kirim Pertanyaan 🚀", type="primary")
+
+# 7. Proses Jawaban
+if submit_button and prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    vector_store = QdrantVectorStore.from_existing_collection(
+        embedding=embeddings,
+        collection_name=collection_name,
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY
+    )
+    
+    docs = vector_store.similarity_search(prompt, k=4)
+    
+    if not docs:
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah dokumen PDF terlebih dahulu melalui sidebar."
+    else:
+        context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+        full_prompt = f"{AI_SYSTEM_PRO
