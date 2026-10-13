@@ -7,4 +7,5 @@ langchain-huggingface
 langchain-qdrant
 langchain-community
 pypdf
+cryptography
 sentence-transformers
