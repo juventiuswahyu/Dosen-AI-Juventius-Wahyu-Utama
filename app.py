@@ -14,7 +14,6 @@ AI_NAME = "Asisten AI Dosen"
 
 # URL Gambar dari GitHub Repository kamu (Raw URL)
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
-USER_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
 AI_SYSTEM_PROMPT = f"""
 Kamu adalah '{AI_NAME}', asisten virtual akademik yang sangat profesional, ramah, dan pintar.
@@ -38,7 +37,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS untuk Memperbesar Gambar Avatar Chat
 st.markdown("""
     <style>
     .main-header {
@@ -50,26 +48,25 @@ st.markdown("""
     .sub-header {
         font-size: 1rem;
         color: #555555;
-        margin-bottom: 25px;
+        margin-bottom: 20px;
     }
-    /* Memperbesar ukuran Avatar di dalam kolom Chat */
-    [data-testid="stChatMessageAvatar"] {
-        width: 75px !important;
-        height: 75px !important;
-        max-width: 75px !important;
-        max-height: 75px !important;
-        border-radius: 50%;
-        overflow: hidden;
+    .chat-bubble-ai {
+        background-color: #f0f4f9;
+        border-radius: 15px;
+        padding: 15px 20px;
+        color: #1a1a1a;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
     }
-    [data-testid="stChatMessageAvatar"] img {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-    }
-    .stChatMessage {
-        border-radius: 12px;
-        padding: 12px;
-        gap: 15px;
+    .chat-bubble-user {
+        background-color: #0084ff;
+        color: white;
+        border-radius: 15px;
+        padding: 12px 18px;
+        margin-bottom: 15px;
+        float: right;
+        clear: both;
+        max-width: 80%;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -156,47 +153,7 @@ if "messages" not in st.session_state:
         }
     ]
 
+# TAMPILAN KUSTOM: Gambar Karakter Besar ala Sabrina BRI di sebelah Balasan Chat
 for message in st.session_state.messages:
-    avatar = AI_AVATAR_URL if message["role"] == "assistant" else USER_AVATAR
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
-
-# 7. Input Chat
-if prompt := st.chat_input("Ketik pertanyaan Anda di sini..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar=USER_AVATAR):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant", avatar=AI_AVATAR_URL):
-        with st.spinner(f"{AI_NAME} sedang menganalisis materi..."):
-            try:
-                vector_store = QdrantVectorStore.from_existing_collection(
-                    embedding=embeddings,
-                    collection_name=collection_name,
-                    url=QDRANT_URL,
-                    api_key=QDRANT_API_KEY
-                )
-                
-                docs = vector_store.similarity_search(prompt, k=4)
-                
-                if not docs:
-                    response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah dokumen PDF terlebih dahulu melalui panel di sebelah kiri."
-                else:
-                    context = "\n\n---\n\n".join([doc.page_content for doc in docs])
-                    
-                    full_prompt = f"""{AI_SYSTEM_PROMPT}
-
-[MATERI REFERENSI PERKULIAHAN]
-{context}
-
-[PERTANYAAN PENGGUNA]
-{prompt}
-"""
-                    response = llm.invoke(full_prompt)
-                    response_text = response.content
-
-            except Exception as e:
-                response_text = "Maaf, terjadi kesalahan saat mengakses database materi perkuliahan. Pastikan Anda telah mengunggah file PDF."
-
-            st.markdown(response_text)
-            st.session_state.messages.append({"role": "assistant", "content": response_text})
+    if message["role"] == "assistant":
+        col1,
