@@ -27,7 +27,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS Kustom untuk Memperdekat Jarak Header & Merapikan Tombol Reset
+# CSS Kustom
 st.markdown("""
     <style>
     .block-container {
@@ -115,4 +115,36 @@ with st.sidebar:
                 
             st.success("✅ Berhasil disimpan!")
 
-    if st.button("🔄 Reset / Chat Baru", use_container_width=True):
+    if st.button("🔄 Reset Chat", key="btn_sidebar_reset", use_container_width=True):
+        reset_chat()
+        st.rerun()
+
+# 5. Header Utama
+st.title("🤖 " + AI_NAME)
+
+# 6. Chat History Init
+if "messages" not in st.session_state:
+    reset_chat()
+
+# 7. Layout Utama (Karakter & Chat)
+col1, col2 = st.columns([1, 3])
+
+with col1:
+    st.image(AI_AVATAR_URL, width=250)
+
+with col2:
+    st.subheader("💬 Diskusi dengan " + AI_NAME)
+    
+    for message in st.session_state.messages:
+        if message["role"] == "assistant":
+            st.markdown("**🤖 " + AI_NAME + ":**")
+            st.info(message["content"])
+        else:
+            st.markdown("**👤 Anda:**")
+            st.success(message["content"])
+            
+    with st.form(key="chat_form", clear_on_submit=True):
+        prompt = st.text_input(
+            label="Ketik pertanyaan Anda di sini:",
+            placeholder="Contoh: Apa itu positioning?"
+        )
