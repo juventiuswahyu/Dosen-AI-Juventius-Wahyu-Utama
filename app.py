@@ -29,7 +29,6 @@ Aturan Jawaban:
 4. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan dengan sopan: "Maaf, topik tersebut belum tersedia di dalam perpustakaan materi yang diunggah saat ini. Silakan tanyakan hal lain terkait materi yang tersedia."
 5. Jangan mengarang jawaban di luar materi referensi.
 """
-# ------------------------------------------------------------------
 
 # 1. Konfigurasi Halaman
 st.set_page_config(
@@ -80,21 +79,33 @@ with st.sidebar:
             with open(temp_filename, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
-            try:
-                loader = PyPDFLoader(temp_filename)
-                docs = loader.load()
+            loader = PyPDFLoader(temp_filename)
+            docs = loader.load()
+            
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000, 
+                chunk_overlap=150
+            )
+            splits = text_splitter.split_documents(docs)
+            
+            QdrantVectorStore.from_documents(
+                documents=splits,
+                embedding=embeddings,
+                url=QDRANT_URL,
+                api_key=QDRANT_API_KEY,
+                collection_name=collection_name
+            )
+            
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
                 
-                text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=1000, 
-                    chunk_overlap=150
-                )
-                splits = text_splitter.split_documents(docs)
-                
-                QdrantVectorStore.from_documents(
-                    documents=splits,
-                    embedding=embeddings,
-                    url=QDRANT_URL,
-                    api_key=QDRANT_API_KEY,
-                    collection_name=collection_name
-                )
-                st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
+            st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
+
+    if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+# Header Utama Aplikasi
+st.title(f"🤖 {AI_NAME}")
+st.subheader(f"*{AI_FULL_NAME}*")
+st.caption("Selamat datang! Silakan tanyakan apa saja terkait materi perkuliahan
