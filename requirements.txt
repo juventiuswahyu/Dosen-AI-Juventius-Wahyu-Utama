@@ -4,6 +4,7 @@ qdrant-client
 langchain
 langchain-groq
 langchain-huggingface
+langchain-qdrant
 langchain-community
 pypdf
 sentence-transformers
