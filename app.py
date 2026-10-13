@@ -27,15 +27,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS Kustom untuk Memperdekat Jarak Header ke Konten Utama
+# CSS Kustom untuk Memperdekat Jarak Header & Merapikan Tombol Reset
 st.markdown("""
     <style>
-    /* Kurangi padding atas area utama Streamlit */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
     }
-    /* Kecilkan margin bawah title */
     h1 {
         margin-bottom: 0px !important;
         padding-bottom: 0px !important;
@@ -69,6 +67,15 @@ llm = ChatGroq(
 
 client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 collection_name = "materi_library"
+
+# Fungsi Reset Chat
+def reset_chat():
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": "Halo! Saya " + AI_NAME + " (" + AI_FULL_NAME + "). Ada yang ingin Anda tanyakan hari ini?"
+        }
+    ]
 
 # 4. Sidebar
 with st.sidebar:
@@ -108,61 +115,4 @@ with st.sidebar:
                 
             st.success("✅ Berhasil disimpan!")
 
-    if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
-        st.session_state.messages = []
-        st.rerun()
-
-# 5. Header Utama Rapat
-st.title("🤖 " + AI_NAME)
-
-# 6. Chat History Init
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": "Halo! Saya " + AI_NAME + " (" + AI_FULL_NAME + "). Ada yang ingin Anda tanyakan hari ini?"
-        }
-    ]
-
-# 7. Layout Utama (Karakter & Chat)
-col1, col2 = st.columns([1, 3])
-
-with col1:
-    st.image(AI_AVATAR_URL, width=250)
-
-with col2:
-    st.subheader("💬 Diskusi dengan " + AI_NAME)
-    
-    for message in st.session_state.messages:
-        if message["role"] == "assistant":
-            st.markdown("**🤖 " + AI_NAME + ":**")
-            st.info(message["content"])
-        else:
-            st.markdown("**👤 Anda:**")
-            st.success(message["content"])
-            
-    with st.form(key="chat_form", clear_on_submit=True):
-        prompt = st.text_input(
-            label="Ketik pertanyaan Anda di sini:",
-            placeholder="Contoh: Apa itu positioning?"
-        )
-        submit_button = st.form_submit_button(
-            label="Kirim Pertanyaan 🚀",
-            type="primary"
-        )
-
-# 8. Tanyakan ke AI
-if submit_button and prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    vector_store = QdrantVectorStore.from_existing_collection(
-        embedding=embeddings,
-        collection_name=collection_name,
-        url=QDRANT_URL,
-        api_key=QDRANT_API_KEY
-    )
-    
-    docs = vector_store.similarity_search(prompt, k=4)
-    
-    if not docs:
-        response_text
+    if st.button("🔄 Reset / Chat Baru", use_container_width=True):
