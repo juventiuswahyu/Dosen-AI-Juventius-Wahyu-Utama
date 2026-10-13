@@ -7,59 +7,103 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
-# Set Halaman Streamlit
+# ------------------------------------------------------------------
+# KONFIGURASI KARAKTER ASISTEN AI
+# ------------------------------------------------------------------
+AI_NAME = "Asisten AI Dosen"
+
+# URL Gambar dari GitHub Repository kamu (Raw URL)
+AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
+USER_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+
+AI_SYSTEM_PROMPT = f"""
+Kamu adalah '{AI_NAME}', asisten virtual akademik yang sangat profesional, ramah, dan pintar.
+Peranmu adalah membantu mahasiswa/pengguna memahami materi perkuliahan yang sudah diunggah ke perpustakaan data.
+
+Jawablah pertanyaan pengguna secara terstruktur dan jelas HANYA berdasarkan materi referensi di bawah ini:
+
+Aturan Jawaban:
+1. Sapalah pengguna dengan ramah dan profesional.
+2. Jika jawaban ditemukan di materi referensi, jelaskan secara mendalam, rapi, dan komunikatif dengan format poin-poin/penomoran.
+3. Gunakan bahasa Indonesia yang baik, benar, dan santun.
+4. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan dengan sopan: "Maaf, topik tersebut belum tersedia di dalam perpustakaan materi yang diunggah saat ini. Silakan tanyakan hal lain terkait materi yang tersedia."
+5. Jangan mengarang jawaban di luar materi referensi.
+"""
+# ------------------------------------------------------------------
+
+# 1. Konfigurasi Halaman & CSS
 st.set_page_config(
-    page_title="AI Library Materi Khusus", 
-    page_icon="📚", 
+    page_title=f"{AI_NAME}", 
+    page_icon="🤖", 
     layout="wide"
 )
 
-st.title("📚 AI Assistant Library Materi Khusus (Groq)")
-st.write("Sistem Tanya Jawab Materi Khusus dengan Kapasitas Database Besar (Qdrant Cloud).")
+st.markdown("""
+    <style>
+    .main-header {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #1E88E5;
+        margin-bottom: 0px;
+    }
+    .sub-header {
+        font-size: 1rem;
+        color: #555555;
+        margin-bottom: 25px;
+    }
+    .stChatMessage {
+        border-radius: 12px;
+        padding: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# 1. Ambil Kunci API dari Streamlit Secrets
+# Header Aplikasi
+st.markdown(f'<div class="main-header">🤖 {AI_NAME}</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Selamat datang! Silakan tanyakan apa saja terkait materi perkuliahan yang sudah diunggah.</div>', unsafe_allow_html=True)
+
+# 2. Ambil Kunci API dari Streamlit Secrets
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
 
-# Cek Ketersediaan Secrets
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
     st.error("⚠️ Silakan atur GROQ_API_KEY, QDRANT_URL, dan QDRANT_API_KEY pada menu Secrets di Streamlit Cloud!")
     st.stop()
 
-# 2. Inisialisasi Model Embedding dan Model LLM Groq
+# 3. Inisialisasi Embeddings & Model Groq
 @st.cache_resource
 def load_embeddings():
     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 embeddings = load_embeddings()
 
-# Menggunakan ID model gpt-oss-120b yang valid pada API Groq
 llm = ChatGroq(
     model_name="openai/gpt-oss-120b", 
     groq_api_key=GROQ_API_KEY,
     temperature=0.2
 )
 
-# 3. Koneksi ke Qdrant Vector Database
+# 4. Koneksi ke Qdrant
 client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 collection_name = "materi_library"
 
-# 4. Sidebar: Upload PDF & Unggah ke Database
+# 5. Sidebar
 with st.sidebar:
-    st.header("📤 Upload Dokumen Materi")
-    st.info("💡 Upload PDF materi kamu satu per satu di sini.")
+    st.image(AI_AVATAR_URL, use_container_width=True)
+    st.title(f"Panel {AI_NAME}")
+    st.markdown("---")
+    st.header("📤 Unggah Materi PDF")
     
-    uploaded_file = st.file_uploader("Upload File PDF Materi", type=["pdf"])
+    uploaded_file = st.file_uploader("Pilih file PDF materi", type=["pdf"])
     
-    if uploaded_file and st.button("Proses & Simpan ke Database", type="primary"):
-        with st.spinner("Membaca, memecah teks, dan mengirim ke Qdrant Vector Database..."):
+    if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
+        with st.spinner("Sedang membaca dan memproses dokumen..."):
             temp_filename = f"temp_{uploaded_file.name}"
             with open(temp_filename, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
             try:
-                # Load PDF & Pecah Teks
                 loader = PyPDFLoader(temp_filename)
                 docs = loader.load()
                 
@@ -69,7 +113,6 @@ with st.sidebar:
                 )
                 splits = text_splitter.split_documents(docs)
                 
-                # Simpan Dokumen ke Qdrant Vector Database
                 QdrantVectorStore.from_documents(
                     documents=splits,
                     embedding=embeddings,
@@ -77,57 +120,67 @@ with st.sidebar:
                     api_key=QDRANT_API_KEY,
                     collection_name=collection_name
                 )
-                st.success(f"✅ File '{uploaded_file.name}' berhasil diproses dan disimpan ke AI Library!")
+                st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat memproses file: {e}")
+                st.error(f"Gagal memproses file: {e}")
             finally:
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
 
-# 5. Interface Main Area: Tanya Jawab
-st.subheader("💬 Tanya Jawab Seputar Materi")
+    if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
 
-query = st.text_input("Ketik pertanyaan kamu tentang materi di sini:")
+# 6. Chat History
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant", 
+            "content": f"Halo! Saya {AI_NAME}. Ada yang ingin Anda tanyakan terkait materi perkuliahan hari ini?"
+        }
+    ]
 
-if query:
-    with st.spinner("Mencari jawaban terbaik dari materi..."):
-        try:
-            # Hubungkan ke Vector Store Qdrant
-            vector_store = QdrantVectorStore.from_existing_collection(
-                embedding=embeddings,
-                collection_name=collection_name,
-                url=QDRANT_URL,
-                api_key=QDRANT_API_KEY
-            )
-            
-            # Cari 4 dokumen terdekat/paling relevan
-            docs = vector_store.similarity_search(query, k=4)
-            
-            if not docs:
-                st.warning("Belum ada dokumen materi yang tersimpan di database.")
-            else:
-                context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+for message in st.session_state.messages:
+    avatar = AI_AVATAR_URL if message["role"] == "assistant" else USER_AVATAR
+    with st.chat_message(message["role"], avatar=avatar):
+        st.markdown(message["content"])
+
+# 7. Input Chat
+if prompt := st.chat_input("Ketik pertanyaan Anda di sini..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user", avatar=USER_AVATAR):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant", avatar=AI_AVATAR_URL):
+        with st.spinner(f"{AI_NAME} sedang menganalisis materi..."):
+            try:
+                vector_store = QdrantVectorStore.from_existing_collection(
+                    embedding=embeddings,
+                    collection_name=collection_name,
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY
+                )
                 
-                prompt = f"""Kamu adalah asisten instruktur yang ramah dan ahli. 
-Jawab pertanyaan pengguna secara akurat dan jelas HANYA berdasarkan materi referensi di bawah ini:
+                docs = vector_store.similarity_search(prompt, k=4)
+                
+                if not docs:
+                    response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah dokumen PDF terlebih dahulu melalui panel di sebelah kiri."
+                else:
+                    context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+                    
+                    full_prompt = f"""{AI_SYSTEM_PROMPT}
 
-[MATERI REFERENSI]
+[MATERI REFERENSI PERKULIAHAN]
 {context}
 
-[PERTANYAAN]
-{query}
-
-Catatan Aturan Jawab:
-1. Jika jawaban ditemukan di materi referensi, jelaskan secara mendalam.
-2. Jika jawaban sama sekali tidak ada di dalam materi referensi, katakan: "Maaf, materi tersebut belum ada di perpustakaan data." Jangan mengarang jawaban di luar materi.
+[PERTANYAAN PENGGUNA]
+{prompt}
 """
-                response = llm.invoke(prompt)
-                
-                st.markdown("### 🤖 **Jawaban AI:**")
-                st.write(response.content)
-                
-                with st.expander("📄 Lihat Potongan Sumber Materi"):
-                    st.write(context)
-                    
-        except Exception as e:
-            st.error(f"Gagal melakukan pencarian di database (pastikan kamu sudah upload minimal 1 file PDF): {e}")
+                    response = llm.invoke(full_prompt)
+                    response_text = response.content
+
+            except Exception as e:
+                response_text = "Maaf, terjadi kesalahan saat mengakses database materi perkuliahan. Pastikan Anda telah mengunggah file PDF."
+
+            st.markdown(response_text)
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
