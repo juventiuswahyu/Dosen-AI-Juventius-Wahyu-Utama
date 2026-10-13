@@ -12,7 +12,7 @@ from qdrant_client import QdrantClient
 # --------------------------------------------------
 AI_NAME = "JUNIA"
 AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
-AI_AVATAR = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
+AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
 SYS_PROMPT = (
     "Kamu adalah JUNIA (Juven's University & Intelligent Academic Assistant). "
@@ -41,11 +41,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Ambil Kunci API & PIN Admin
+# 2. Ambil Kunci API & PIN Admin dari Secrets
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
-ADMIN_PIN = st.secrets.get("ADMIN_PIN", "1234")
+ADMIN_PIN = st.secrets.get("ADMIN_PIN", "1234")  # Default PIN: 1234 jika belum diatur di secrets
 
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
     st.error("⚠️ Silakan atur Secrets pada Streamlit Cloud!")
@@ -78,34 +78,37 @@ def reset_chat():
         }
     ]
 
-# 4. Sidebar
+# 4. Sidebar (Diakses oleh Dosen & Mahasiswa)
 with st.sidebar:
-    st.image(AI_AVATAR, use_container_width=True)
+    st.image(AI_AVATAR_URL, use_container_width=True)
     st.title("Panel JUNIA")
     st.caption(AI_FULL_NAME)
     st.markdown("---")
     
+    # Mode Akses Dosen / Admin
     st.header("🔒 Akses Dosen")
     input_pin = st.text_input("Masukan PIN Khusus Dosen:", type="password")
     
     if input_pin == ADMIN_PIN:
         st.success("🔓 Akses Dosen Aktif")
-        st.header("📤 Unggah Materi PDF ke AI")
+        st.header("📤 Unggah Materi PDF")
         
         uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
-        btn_save = st.button("Simpan ke Library", type="primary", use_container_width=True)
         
-        if uploaded_file and btn_save:
+        if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
             with st.spinner("Memproses dokumen..."):
-                tmp_file = "temp_" + uploaded_file.name
-                with open(tmp_file, "wb") as f:
+                temp_filename = "temp_" + uploaded_file.name
+                with open(temp_filename, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 
-                loader = PyPDFLoader(tmp_file)
+                loader = PyPDFLoader(temp_filename)
                 docs = loader.load()
                 
-                splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-                splits = splitter.split_documents(docs)
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=150
+                )
+                splits = text_splitter.split_documents(docs)
                 
                 QdrantVectorStore.from_documents(
                     documents=splits,
@@ -115,12 +118,81 @@ with st.sidebar:
                     collection_name=collection_name
                 )
                 
-                if os.path.exists(tmp_file):
-                    os.remove(tmp_file)
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
                     
                 st.success("✅ Berhasil disimpan!")
     elif input_pin != "":
         st.error("❌ PIN Salah!")
         
     st.markdown("---")
-    if st.button("🔄
+    if st.button("🔄 Reset Chat", key="btn_sidebar_reset", use_container_width=True):
+        reset_chat()
+        st.rerun()
+
+# 5. Header Utama
+st.title("🤖 " + AI_NAME)
+
+# 6. Chat History Init
+if "messages" not in st.session_state:
+    reset_chat()
+
+# 7. Layout Utama (Karakter & Chat)
+col1, col2 = st.columns([1, 3])
+
+with col1:
+    st.image(AI_AVATAR_URL, width=250)
+
+with col2:
+    st.subheader("💬 Diskusi dengan " + AI_NAME)
+    
+    for message in st.session_state.messages:
+        if message["role"] == "assistant":
+            st.markdown("**🤖 " + AI_NAME + ":**")
+            st.info(message["content"])
+        else:
+            st.markdown("**👤 Anda:**")
+            st.success(message["content"])
+            
+    # Input Teks Pertanyaan
+    prompt = st.text_input(
+        label="Ketik pertanyaan Anda di sini:",
+        placeholder="Contoh: Apa itu positioning?"
+    )
+    
+    # Tombol Berdampingan Kiri-Kanan
+    c1, c2, c3 = st.columns([1.5, 1, 2])
+    submit_button = c1.button("Kirim Pertanyaan 🚀", type="primary", use_container_width=True)
+    reset_button = c2.button("🔄 Reset Chat", use_container_width=True)
+
+# 8. Proses Aksi (Kirim / Reset)
+if reset_button:
+    reset_chat()
+    st.rerun()
+
+if submit_button and prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    vector_store = QdrantVectorStore.from_existing_collection(
+        embedding=embeddings,
+        collection_name=collection_name,
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY
+    )
+    
+    docs = vector_store.similarity_search(prompt, k=4)
+    
+    if not docs:
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan minta Dosen untuk mengunggah PDF."
+    else:
+        context_text = "\n\n---\n\n".join([d.page_content for d in docs])
+        full_prompt = (
+            SYS_PROMPT + 
+            "[REFERENSI]\n" + context_text + 
+            "\n\n[PERTANYAAN]\n" + prompt
+        )
+        res = llm.invoke(full_prompt)
+        response_text = res.content
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+    st.rerun()
