@@ -38,6 +38,7 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS untuk Memperbesar Gambar Avatar Chat
 st.markdown("""
     <style>
     .main-header {
@@ -51,9 +52,24 @@ st.markdown("""
         color: #555555;
         margin-bottom: 25px;
     }
+    /* Memperbesar ukuran Avatar di dalam kolom Chat */
+    [data-testid="stChatMessageAvatar"] {
+        width: 75px !important;
+        height: 75px !important;
+        max-width: 75px !important;
+        max-height: 75px !important;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+    [data-testid="stChatMessageAvatar"] img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
     .stChatMessage {
         border-radius: 12px;
-        padding: 8px;
+        padding: 12px;
+        gap: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
