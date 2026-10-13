@@ -14,7 +14,7 @@ AI_NAME = "JUNIA"
 AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
-# DAFTAR MATERI PERTEMUAN
+# DAFTAR MATERI PERTEMUAN (Edit Link Drive & Cover di sini)
 MODUL_PERTEMUAN = [
     {
         "pertemuan": "Pertemuan 1",
@@ -105,3 +105,9 @@ with st.sidebar:
     input_pin = st.text_input("Masukan PIN Khusus Dosen:", type="password")
     
     if input_pin == ADMIN_PIN:
+        st.success("🔓 Akses Dosen Aktif")
+        st.header("📤 Unggah Materi PDF ke AI")
+        
+        uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
+        
+        if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width
