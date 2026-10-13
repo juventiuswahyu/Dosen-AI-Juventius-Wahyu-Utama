@@ -14,6 +14,22 @@ AI_NAME = "JUNIA"
 AI_FULL_NAME = "Juven's University & Intelligent Academic Assistant"
 AI_AVATAR_URL = "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png"
 
+# DAFTAR MATERI PERTEMUAN (Bisa kamu tambah/edit link Google Drive & Cover-nya di sini)
+MODUL_PERTEMUAN = [
+    {
+        "pertemuan": "Pertemuan 1",
+        "judul": "Pengantar Pemasaran & Positioning",
+        "cover": "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png", # Ubah ke URL Cover Buku kamu
+        "drive_link": "https://drive.google.com/file/d/xxxxxx/view?usp=sharing" # Masukkan Link Google Drive PDF kamu
+    },
+    {
+        "pertemuan": "Pertemuan 2",
+        "judul": "Analisis Pasar & Perilaku Konsumen",
+        "cover": "https://raw.githubusercontent.com/juventiuswahyu/Dosen-AI-Juventius-Wahyu-Utama/main/Karakter%20Asisten%20AI.png", # Ubah ke URL Cover Buku kamu
+        "drive_link": "https://drive.google.com/file/d/yyyyyy/view?usp=sharing" # Masukkan Link Google Drive PDF kamu
+    }
+]
+
 SYS_PROMPT = (
     "Kamu adalah JUNIA (Juven's University & Intelligent Academic Assistant). "
     "Kamu asisten akademik yang ramah, sopan, dan profesional. "
@@ -41,11 +57,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Ambil Kunci API & PIN Admin dari Secrets
+# 2. Ambil Kunci API & PIN Admin
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
-ADMIN_PIN = st.secrets.get("ADMIN_PIN", "1234")  # Default PIN: 1234 jika belum diatur di secrets
+ADMIN_PIN = st.secrets.get("ADMIN_PIN", "1234")
 
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
     st.error("⚠️ Silakan atur Secrets pada Streamlit Cloud!")
@@ -78,7 +94,7 @@ def reset_chat():
         }
     ]
 
-# 4. Sidebar (Diakses oleh Dosen & Mahasiswa)
+# 4. Sidebar
 with st.sidebar:
     st.image(AI_AVATAR_URL, use_container_width=True)
     st.title("Panel JUNIA")
@@ -91,7 +107,7 @@ with st.sidebar:
     
     if input_pin == ADMIN_PIN:
         st.success("🔓 Akses Dosen Aktif")
-        st.header("📤 Unggah Materi PDF")
+        st.header("📤 Unggah Materi PDF ke AI")
         
         uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
         
@@ -133,39 +149,56 @@ with st.sidebar:
 # 5. Header Utama
 st.title("🤖 " + AI_NAME)
 
+# Tab Antara Diskusi AI & Modul Pertemuan
+tab_chat, tab_materi = st.tabs(["💬 Diskusi AI", "📚 Modul & Material Perkuliahan"])
+
 # 6. Chat History Init
 if "messages" not in st.session_state:
     reset_chat()
 
-# 7. Layout Utama (Karakter & Chat)
-col1, col2 = st.columns([1, 3])
+# TAB 1: DISKUSI AI
+with tab_chat:
+    col1, col2 = st.columns([1, 3])
 
-with col1:
-    st.image(AI_AVATAR_URL, width=250)
+    with col1:
+        st.image(AI_AVATAR_URL, width=250)
 
-with col2:
-    st.subheader("💬 Diskusi dengan " + AI_NAME)
+    with col2:
+        st.subheader("💬 Diskusi dengan " + AI_NAME)
+        
+        for message in st.session_state.messages:
+            if message["role"] == "assistant":
+                st.markdown("**🤖 " + AI_NAME + ":**")
+                st.info(message["content"])
+            else:
+                st.markdown("**👤 Anda:**")
+                st.success(message["content"])
+                
+        prompt = st.text_input(
+            label="Ketik pertanyaan Anda di sini:",
+            placeholder="Contoh: Apa itu positioning?"
+        )
+        
+        c1, c2, c3 = st.columns([1.5, 1, 2])
+        submit_button = c1.button("Kirim Pertanyaan 🚀", type="primary", use_container_width=True)
+        reset_button = c2.button("🔄 Reset Chat", use_container_width=True)
+
+# TAB 2: KATALOG COVER BUKU & DOWNLOAD MATERI GOOGLE DRIVE
+with tab_materi:
+    st.subheader("📖 Download Materi & Buku Perkuliahan")
+    st.write("Silakan unduh file PDF materi perkuliahan sesuai pertemuan di bawah ini:")
+    st.markdown("---")
     
-    for message in st.session_state.messages:
-        if message["role"] == "assistant":
-            st.markdown("**🤖 " + AI_NAME + ":**")
-            st.info(message["content"])
-        else:
-            st.markdown("**👤 Anda:**")
-            st.success(message["content"])
-            
-    # Input Teks Pertanyaan
-    prompt = st.text_input(
-        label="Ketik pertanyaan Anda di sini:",
-        placeholder="Contoh: Apa itu positioning?"
-    )
+    cols = st.columns(3) # Tampilkan 3 cover per baris
     
-    # Tombol Berdampingan Kiri-Kanan
-    c1, c2, c3 = st.columns([1.5, 1, 2])
-    submit_button = c1.button("Kirim Pertanyaan 🚀", type="primary", use_container_width=True)
-    reset_button = c2.button("🔄 Reset Chat", use_container_width=True)
+    for idx, item in enumerate(MODUL_PERTEMUAN):
+        with cols[idx % 3]:
+            st.image(item["cover"], use_container_width=True)
+            st.bold(item["pertemuan"])
+            st.caption(item["judul"])
+            st.link_button("📥 Download Modul (PDF)", item["drive_link"], use_container_width=True)
 
-# 8. Proses Aksi (Kirim / Reset)
+# 7. Proses Aksi AI (Kirim / Reset)
 if reset_button:
     reset_chat()
     st.rerun()
