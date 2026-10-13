@@ -27,15 +27,16 @@ if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
     st.error("⚠️ Silakan atur GROQ_API_KEY, QDRANT_URL, dan QDRANT_API_KEY pada menu Secrets di Streamlit Cloud!")
     st.stop()
 
-# 2. Inisialisasi Model Embedding dan Model LLM Groq (Menggunakan gpt-oss-120b)
+# 2. Inisialisasi Model Embedding dan Model LLM Groq
 @st.cache_resource
 def load_embeddings():
     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 embeddings = load_embeddings()
 
+# Menggunakan ID model gpt-oss-120b yang valid pada API Groq
 llm = ChatGroq(
-    model_name="gpt-oss-120b", 
+    model_name="openai/gpt-oss-120b", 
     groq_api_key=GROQ_API_KEY,
     temperature=0.2
 )
@@ -129,4 +130,4 @@ Catatan Aturan Jawab:
                     st.write(context)
                     
         except Exception as e:
-            st.error(f"Gagal melakukan pencarian di database (mungkin database masih kosong): {e}")
+            st.error(f"Gagal melakukan pencarian di database (pastikan kamu sudah upload minimal 1 file PDF): {e}")
