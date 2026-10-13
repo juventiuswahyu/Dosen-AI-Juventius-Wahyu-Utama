@@ -30,49 +30,12 @@ Aturan Jawaban:
 """
 # ------------------------------------------------------------------
 
-# 1. Konfigurasi Halaman & CSS
+# 1. Konfigurasi Halaman
 st.set_page_config(
-    page_title=f"{AI_NAME}", 
+    page_title=AI_NAME, 
     page_icon="🤖", 
     layout="wide"
 )
-
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #1E88E5;
-        margin-bottom: 0px;
-    }
-    .sub-header {
-        font-size: 1rem;
-        color: #555555;
-        margin-bottom: 20px;
-    }
-    .chat-bubble-ai {
-        background-color: #f0f4f9;
-        border-radius: 15px;
-        padding: 15px 20px;
-        color: #1a1a1a;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    .chat-bubble-user {
-        background-color: #0084ff;
-        color: white;
-        border-radius: 15px;
-        padding: 12px 18px;
-        margin-bottom: 15px;
-        float: right;
-        clear: both;
-        max-width: 80%;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Header Aplikasi
-st.markdown(f'<div class="main-header">🤖 {AI_NAME}</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Selamat datang! Silakan tanyakan apa saja terkait materi perkuliahan yang sudah diunggah.</div>', unsafe_allow_html=True)
 
 # 2. Ambil Kunci API dari Streamlit Secrets
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
@@ -143,6 +106,10 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+# Header Utama
+st.title(f"🤖 {AI_NAME}")
+st.caption("Selamat datang! Silakan tanyakan apa saja terkait materi perkuliahan yang sudah diunggah.")
+
 # 6. Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -152,12 +119,43 @@ if "messages" not in st.session_state:
         }
     ]
 
-# TAMPILAN KARAKTER BESAR
+# TAMPILAN KARAKTER AI UTUH & BESAR
 for message in st.session_state.messages:
     if message["role"] == "assistant":
         col1, col2 = st.columns([1, 4])
         with col1:
-            st.image(AI_AVATAR_URL, width=180)
+            st.image(AI_AVATAR_URL, width=220)
         with col2:
-            st.markdown(f"**{AI_NAME}**")
-            st.markdown(f
+            st.subheader(AI_NAME)
+            st.info(message["content"])
+    else:
+        st.chat_message("user").write(message["content"])
+
+# 7. Input Chat
+if prompt := st.chat_input("Ketik pertanyaan Anda di sini..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    try:
+        vector_store = QdrantVectorStore.from_existing_collection(
+            embedding=embeddings,
+            collection_name=collection_name,
+            url=QDRANT_URL,
+            api_key=QDRANT_API_KEY
+        )
+        
+        docs = vector_store.similarity_search(prompt, k=4)
+        
+        if not docs:
+            response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah dokumen PDF terlebih dahulu melalui panel di sebelah kiri."
+        else:
+            context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+            
+            full_prompt = f"{AI_SYSTEM_PROMPT}\n\n[MATERI REFERENSI PERKULIAHAN]\n{context}\n\n[PERTANYAAN PENGGUNA]\n{prompt}"
+            response = llm.invoke(full_prompt)
+            response_text = response.content
+
+    except Exception as e:
+        response_text = "Maaf, terjadi kesalahan saat mengakses database materi perkuliahan. Pastikan Anda telah mengunggah file PDF."
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+    st.rerun()
