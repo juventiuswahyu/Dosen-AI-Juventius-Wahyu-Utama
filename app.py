@@ -143,8 +143,52 @@ with col2:
             st.markdown("**👤 Anda:**")
             st.success(message["content"])
             
+    # Form Input Chat & Tombol
     with st.form(key="chat_form", clear_on_submit=True):
         prompt = st.text_input(
             label="Ketik pertanyaan Anda di sini:",
             placeholder="Contoh: Apa itu positioning?"
         )
+        
+        submit_button = st.form_submit_button(
+            label="Kirim Pertanyaan 🚀",
+            type="primary",
+            use_container_width=True
+        )
+        
+        reset_button = st.form_submit_button(
+            label="🔄 Reset Chat",
+            use_container_width=True
+        )
+
+# 8. Proses Aksi Form (Kirim / Reset)
+if reset_button:
+    reset_chat()
+    st.rerun()
+
+if submit_button and prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    vector_store = QdrantVectorStore.from_existing_collection(
+        embedding=embeddings,
+        collection_name=collection_name,
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY
+    )
+    
+    docs = vector_store.similarity_search(prompt, k=4)
+    
+    if not docs:
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah PDF lewat sidebar."
+    else:
+        context_text = "\n\n---\n\n".join([d.page_content for d in docs])
+        full_prompt = (
+            SYS_PROMPT + 
+            "[REFERENSI]\n" + context_text + 
+            "\n\n[PERTANYAAN]\n" + prompt
+        )
+        res = llm.invoke(full_prompt)
+        response_text = res.content
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+    st.rerun()
