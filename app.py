@@ -27,6 +27,22 @@ st.set_page_config(
     layout="wide"
 )
 
+# CSS Kustom untuk Memperdekat Jarak Header ke Konten Utama
+st.markdown("""
+    <style>
+    /* Kurangi padding atas area utama Streamlit */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+    /* Kecilkan margin bawah title */
+    h1 {
+        margin-bottom: 0px !important;
+        padding-bottom: 0px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 2. Ambil Kunci API
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
@@ -96,9 +112,8 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# 5. Header Utama (Sudah Dihapus Teks Subheader & Caption)
+# 5. Header Utama Rapat
 st.title("🤖 " + AI_NAME)
-st.markdown("---")
 
 # 6. Chat History Init
 if "messages" not in st.session_state:
@@ -150,16 +165,4 @@ if submit_button and prompt:
     docs = vector_store.similarity_search(prompt, k=4)
     
     if not docs:
-        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah PDF lewat sidebar."
-    else:
-        context_text = "\n\n---\n\n".join([d.page_content for d in docs])
-        full_prompt = (
-            SYS_PROMPT + 
-            "[REFERENSI]\n" + context_text + 
-            "\n\n[PERTANYAAN]\n" + prompt
-        )
-        res = llm.invoke(full_prompt)
-        response_text = res.content
-
-    st.session_state.messages.append({"role": "assistant", "content": response_text})
-    st.rerun()
+        response_text
