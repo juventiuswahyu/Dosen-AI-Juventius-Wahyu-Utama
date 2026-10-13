@@ -82,3 +82,19 @@ with st.sidebar:
             
             try:
                 loader = PyPDFLoader(temp_filename)
+                docs = loader.load()
+                
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000, 
+                    chunk_overlap=150
+                )
+                splits = text_splitter.split_documents(docs)
+                
+                QdrantVectorStore.from_documents(
+                    documents=splits,
+                    embedding=embeddings,
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY,
+                    collection_name=collection_name
+                )
+                st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
