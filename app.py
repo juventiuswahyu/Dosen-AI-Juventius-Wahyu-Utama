@@ -149,6 +149,39 @@ with col2:
         placeholder="Contoh: Apa itu positioning?"
     )
     
-    # Tombol Berdampingan di Kiri dan Kanan (Ringkas)
-    btn_col1, btn_col2, btn_spacer = st.columns([1.5, 1, 2])
-    with btn
+    # Tombol Berdampingan Kiri-Kanan Aman Tanpa Block 'with'
+    c1, c2, c3 = st.columns([1.5, 1, 2])
+    submit_button = c1.button("Kirim Pertanyaan 🚀", type="primary", use_container_width=True)
+    reset_button = c2.button("🔄 Reset Chat", use_container_width=True)
+
+# 8. Proses Aksi (Kirim / Reset)
+if reset_button:
+    reset_chat()
+    st.rerun()
+
+if submit_button and prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    vector_store = QdrantVectorStore.from_existing_collection(
+        embedding=embeddings,
+        collection_name=collection_name,
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY
+    )
+    
+    docs = vector_store.similarity_search(prompt, k=4)
+    
+    if not docs:
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah PDF lewat sidebar."
+    else:
+        context_text = "\n\n---\n\n".join([d.page_content for d in docs])
+        full_prompt = (
+            SYS_PROMPT + 
+            "[REFERENSI]\n" + context_text + 
+            "\n\n[PERTANYAAN]\n" + prompt
+        )
+        res = llm.invoke(full_prompt)
+        response_text = res.content
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+    st.rerun()
