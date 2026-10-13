@@ -110,4 +110,34 @@ with st.sidebar:
         
         uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
         
-        if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width
+        btn_save = st.button(
+            "Simpan ke Library", 
+            type="primary", 
+            use_container_width=True
+        )
+        
+        if uploaded_file and btn_save:
+            with st.spinner("Memproses dokumen..."):
+                temp_filename = "temp_" + uploaded_file.name
+                with open(temp_filename, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
+                loader = PyPDFLoader(temp_filename)
+                docs = loader.load()
+                
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=150
+                )
+                splits = text_splitter.split_documents(docs)
+                
+                QdrantVectorStore.from_documents(
+                    documents=splits,
+                    embedding=embeddings,
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY,
+                    collection_name=collection_name
+                )
+                
+                if os.path.exists(temp_filename):
+                    os.remove(temp
