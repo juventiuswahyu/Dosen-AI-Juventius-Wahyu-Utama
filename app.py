@@ -4,7 +4,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 # Set Halaman Streamlit
@@ -47,7 +47,7 @@ collection_name = "materi_library"
 # 4. Sidebar: Upload PDF & Unggah ke Database
 with st.sidebar:
     st.header("📤 Upload Dokumen Materi")
-    st.info("💡 Karena data bisa sampai 5 GB, upload PDF dilakukan secara bertahap file per file.")
+    st.info("💡 Upload PDF materi kamu satu per satu di sini.")
     
     uploaded_file = st.file_uploader("Upload File PDF Materi", type=["pdf"])
     
@@ -68,10 +68,10 @@ with st.sidebar:
                 )
                 splits = text_splitter.split_documents(docs)
                 
-                # Push Chunk Teks ke Qdrant Database
-                Qdrant.from_documents(
-                    splits,
-                    embeddings,
+                # Simpan Dokumen ke Qdrant Vector Database
+                QdrantVectorStore.from_documents(
+                    documents=splits,
+                    embedding=embeddings,
                     url=QDRANT_URL,
                     api_key=QDRANT_API_KEY,
                     collection_name=collection_name
@@ -92,10 +92,11 @@ if query:
     with st.spinner("Mencari jawaban terbaik dari materi..."):
         try:
             # Hubungkan ke Vector Store Qdrant
-            vector_store = Qdrant(
-                client=client, 
-                collection_name=collection_name, 
-                embeddings=embeddings
+            vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embeddings,
+                collection_name=collection_name,
+                url=QDRANT_URL,
+                api_key=QDRANT_API_KEY
             )
             
             # Cari 4 dokumen terdekat/paling relevan
@@ -128,4 +129,4 @@ Catatan Aturan Jawab:
                     st.write(context)
                     
         except Exception as e:
-            st.error(f"Gagal melakukan pencarian di database: {e}")
+            st.error(f"Gagal melakukan pencarian di database (mungkin database masih kosong): {e}")
