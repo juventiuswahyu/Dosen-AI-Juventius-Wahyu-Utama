@@ -96,10 +96,8 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# 5. Header Utama
+# 5. Header Utama (Sudah Dihapus Teks Subheader & Caption)
 st.title("🤖 " + AI_NAME)
-st.subheader("*" + AI_FULL_NAME + "*")
-st.caption("Selamat datang! Silakan tanyakan materi perkuliahan Anda.")
 st.markdown("---")
 
 # 6. Chat History Init
