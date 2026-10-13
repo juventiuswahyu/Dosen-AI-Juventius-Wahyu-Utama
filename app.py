@@ -41,10 +41,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Ambil Kunci API
+# 2. Ambil Kunci API & PIN Admin dari Secrets
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 QDRANT_URL = st.secrets.get("QDRANT_URL")
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY")
+ADMIN_PIN = st.secrets.get("ADMIN_PIN", "1234")  # Default PIN: 1234 jika belum diatur di secrets
 
 if not GROQ_API_KEY or not QDRANT_URL or not QDRANT_API_KEY:
     st.error("⚠️ Silakan atur Secrets pada Streamlit Cloud!")
@@ -77,44 +78,54 @@ def reset_chat():
         }
     ]
 
-# 4. Sidebar
+# 4. Sidebar (Diakses oleh Dosen & Mahasiswa)
 with st.sidebar:
     st.image(AI_AVATAR_URL, use_container_width=True)
     st.title("Panel JUNIA")
     st.caption(AI_FULL_NAME)
     st.markdown("---")
-    st.header("📤 Unggah Materi PDF")
     
-    uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
+    # Mode Akses Dosen / Admin
+    st.header("🔒 Akses Dosen")
+    input_pin = st.text_input("Masukan PIN Khusus Dosen:", type="password")
     
-    if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
-        with st.spinner("Memproses dokumen..."):
-            temp_filename = "temp_" + uploaded_file.name
-            with open(temp_filename, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
-            loader = PyPDFLoader(temp_filename)
-            docs = loader.load()
-            
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=150
-            )
-            splits = text_splitter.split_documents(docs)
-            
-            QdrantVectorStore.from_documents(
-                documents=splits,
-                embedding=embeddings,
-                url=QDRANT_URL,
-                api_key=QDRANT_API_KEY,
-                collection_name=collection_name
-            )
-            
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
+    if input_pin == ADMIN_PIN:
+        st.success("🔓 Akses Dosen Aktif")
+        st.header("📤 Unggah Materi PDF")
+        
+        uploaded_file = st.file_uploader("Pilih file PDF", type=["pdf"])
+        
+        if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
+            with st.spinner("Memproses dokumen..."):
+                temp_filename = "temp_" + uploaded_file.name
+                with open(temp_filename, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
                 
-            st.success("✅ Berhasil disimpan!")
-
+                loader = PyPDFLoader(temp_filename)
+                docs = loader.load()
+                
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=150
+                )
+                splits = text_splitter.split_documents(docs)
+                
+                QdrantVectorStore.from_documents(
+                    documents=splits,
+                    embedding=embeddings,
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY,
+                    collection_name=collection_name
+                )
+                
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+                    
+                st.success("✅ Berhasil disimpan!")
+    elif input_pin != "":
+        st.error("❌ PIN Salah!")
+        
+    st.markdown("---")
     if st.button("🔄 Reset Chat", key="btn_sidebar_reset", use_container_width=True):
         reset_chat()
         st.rerun()
@@ -149,7 +160,7 @@ with col2:
         placeholder="Contoh: Apa itu positioning?"
     )
     
-    # Tombol Berdampingan Kiri-Kanan Aman Tanpa Block 'with'
+    # Tombol Berdampingan Kiri-Kanan
     c1, c2, c3 = st.columns([1.5, 1, 2])
     submit_button = c1.button("Kirim Pertanyaan 🚀", type="primary", use_container_width=True)
     reset_button = c2.button("🔄 Reset Chat", use_container_width=True)
@@ -172,7 +183,7 @@ if submit_button and prompt:
     docs = vector_store.similarity_search(prompt, k=4)
     
     if not docs:
-        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan unggah PDF lewat sidebar."
+        response_text = "Maaf, perpustakaan materi Anda masih kosong. Silakan minta Dosen untuk mengunggah PDF."
     else:
         context_text = "\n\n---\n\n".join([d.page_content for d in docs])
         full_prompt = (
