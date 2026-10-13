@@ -50,12 +50,6 @@ st.markdown("""
         color: #555555;
         margin-bottom: 20px;
     }
-    .chat-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 10px;
-        margin-bottom: 15px;
-    }
     .chat-bubble-ai {
         background-color: #f0f4f9;
         border-radius: 15px;
@@ -97,4 +91,73 @@ def load_embeddings():
 embeddings = load_embeddings()
 
 llm = ChatGroq(
-    model_name="openai/gpt-oss-120b",
+    model_name="openai/gpt-oss-120b", 
+    groq_api_key=GROQ_API_KEY,
+    temperature=0.2
+)
+
+# 4. Koneksi ke Qdrant
+client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+collection_name = "materi_library"
+
+# 5. Sidebar
+with st.sidebar:
+    st.image(AI_AVATAR_URL, use_container_width=True)
+    st.title(f"Panel {AI_NAME}")
+    st.markdown("---")
+    st.header("📤 Unggah Materi PDF")
+    
+    uploaded_file = st.file_uploader("Pilih file PDF materi", type=["pdf"])
+    
+    if uploaded_file and st.button("Simpan ke Library", type="primary", use_container_width=True):
+        with st.spinner("Sedang membaca dan memproses dokumen..."):
+            temp_filename = f"temp_{uploaded_file.name}"
+            with open(temp_filename, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            try:
+                loader = PyPDFLoader(temp_filename)
+                docs = loader.load()
+                
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000, 
+                    chunk_overlap=150
+                )
+                splits = text_splitter.split_documents(docs)
+                
+                QdrantVectorStore.from_documents(
+                    documents=splits,
+                    embedding=embeddings,
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY,
+                    collection_name=collection_name
+                )
+                st.success(f"✅ '{uploaded_file.name}' berhasil ditambahkan!")
+            except Exception as e:
+                st.error(f"Gagal memproses file: {e}")
+            finally:
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+
+    if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+# 6. Chat History
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant", 
+            "content": f"Halo! Saya {AI_NAME}. Ada yang ingin Anda tanyakan terkait materi perkuliahan hari ini?"
+        }
+    ]
+
+# TAMPILAN KARAKTER BESAR
+for message in st.session_state.messages:
+    if message["role"] == "assistant":
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.image(AI_AVATAR_URL, width=180)
+        with col2:
+            st.markdown(f"**{AI_NAME}**")
+            st.markdown(f
